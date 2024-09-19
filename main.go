@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strings" // Import the strings package
+	"time"
 )
 
 func main() {
@@ -78,20 +79,121 @@ func parseDNSQuery(data []byte, conn *net.UDPConn, clientAddr *net.UDPAddr) erro
 		fmt.Printf("Query Class: %d\n", qclass)
 
 		offset += 4
-		// Craft a DNS response
-		response := createDNSResponse(transactionID, domainName)
+		// 	// Craft a DNS response
+		// 	response := createDNSResponse(transactionID, domainName)
 
-		// Send the response to the client
-		_, err = conn.WriteToUDP(response, clientAddr)
-		if err != nil {
-			return fmt.Errorf("error sending DNS response: %v", err)
+		// 	// Send the response to the client
+		// 	_, err = conn.WriteToUDP(response, clientAddr)
+		// 	if err != nil {
+		// 		return fmt.Errorf("error sending DNS response: %v", err)
+		// 	}
+		// }
+		// return nil
+		// If the domain is within linuxdatahub.local, resolve it locally
+		if strings.HasSuffix(domainName, "linuxdatahub.local") || domainName == "linuxdatahub.local" {
+			cname := resolveToLinuxDataHub(domainName)
+
+			response := createDNSResponse(transactionID, domainName, cname)
+			_, err := conn.WriteToUDP(response, clientAddr)
+			if err != nil {
+				return fmt.Errorf("error sending DNS response: %v", err)
+			}
+		} else {
+			// Forward the request to another DNS server (e.g., 8.8.8.8)
+			forwardToExternalDNS(data, conn, clientAddr)
 		}
 	}
 	return nil
 }
 
-// createDNSResponse creates a DNS response based on the query
-func createDNSResponse(transactionID uint16, domainName string) []byte {
+// forwardToExternalDNS forwards a DNS query to another DNS server (e.g., Google DNS)
+func forwardToExternalDNS(query []byte, conn *net.UDPConn, clientAddr *net.UDPAddr) {
+	dnsServerAddr := net.UDPAddr{
+		IP:   net.ParseIP("8.8.8.8"), // Forward to Google DNS (or other DNS server)
+		Port: 53,
+	}
+
+	// Create a connection to the external DNS server
+	externalConn, err := net.DialUDP("udp", nil, &dnsServerAddr)
+	if err != nil {
+		fmt.Printf("Error connecting to external DNS server: %v\n", err)
+		return
+	}
+	defer externalConn.Close()
+
+	// Send the DNS query to the external DNS server
+	_, err = externalConn.Write(query)
+	if err != nil {
+		fmt.Printf("Error forwarding DNS query: %v\n", err)
+		return
+	}
+
+	// Wait for the response from the external DNS server
+	response := make([]byte, 512)
+	externalConn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	n, _, err := externalConn.ReadFromUDP(response)
+	if err != nil {
+		fmt.Printf("Error reading response from external DNS server: %v\n", err)
+		return
+	}
+
+	// Send the response back to the client
+	_, err = conn.WriteToUDP(response[:n], clientAddr)
+	if err != nil {
+		fmt.Printf("Error sending response to client: %v\n", err)
+		return
+	}
+}
+
+// // resolveToLinuxDataHub resolves linuxdatahub.local to linuxdatahub.com
+// func resolveToLinuxDataHub(domain string) string {
+// 	fmt.Printf("Resolving %s to linuxdatahub.com\n", domain)
+// 	// Use the public IP or any IP associated with linuxdatahub.com
+// 	// This would be the internal resolution
+// 	return "ldh.svc" // Example IP for linuxdatahub.com (replace with actual)
+// }
+
+// Instead of resolving to an IP, resolve the query to the CNAME linuxdatahub.svc
+func resolveToLinuxDataHub(domain string) string {
+	fmt.Printf("Resolving %s to CNAME linuxdatahub.svc\n", domain)
+	// Return the CNAME for linuxdatahub.svc
+	return "linuxdatahub.svc"
+}
+
+// func createDNSResponse(transactionID uint16, domainName string, cname string) []byte {
+// 	// DNS Header (12 bytes)
+// 	header := make([]byte, 12)
+// 	binary.BigEndian.PutUint16(header[0:2], transactionID) // Transaction ID
+// 	binary.BigEndian.PutUint16(header[2:4], 0x8180)        // Flags: Standard query response, no error
+// 	binary.BigEndian.PutUint16(header[4:6], 1)             // Number of questions
+// 	binary.BigEndian.PutUint16(header[6:8], 1)             // Number of answers
+// 	binary.BigEndian.PutUint16(header[8:10], 0)            // Number of authority RRs
+// 	binary.BigEndian.PutUint16(header[10:12], 0)           // Number of additional RRs
+
+// 	// Question Section
+// 	question := createDomainNameSection(domainName)     // The domain name section
+// 	question = append(question, 0x00, 0x01, 0x00, 0x01) // Type A, Class IN
+
+// 	// Answer Section for CNAME
+// 	answer := createDomainNameSection(domainName)   // Domain Name (the queried domain)
+// 	answer = append(answer, 0x00, 0x05)             // Type CNAME (0x05)
+// 	answer = append(answer, 0x00, 0x01)             // Class IN (0x01)
+// 	answer = append(answer, 0x00, 0x00, 0x00, 0x1e) // TTL (30 seconds)
+
+// 	cnameSection := createDomainNameSection(cname)                 // CNAME field
+// 	dataLength := len(cnameSection)                                // Calculate correct data length
+// 	answer = append(answer, byte(dataLength>>8), byte(dataLength)) // 2-byte length field for CNAME
+// 	answer = append(answer, cnameSection...)                       // Append the CNAME data
+
+// 	// Combine all parts into the response
+// 	response := append(header, question...)
+// 	response = append(response, answer...)
+
+//		return response
+//	}
+//
+// Modify the createDNSResponse function to return CNAME but keep .local in output
+func createDNSResponse(transactionID uint16, domainName string, cname string) []byte {
 	// DNS Header (12 bytes)
 	header := make([]byte, 12)
 	binary.BigEndian.PutUint16(header[0:2], transactionID) // Transaction ID
@@ -105,14 +207,16 @@ func createDNSResponse(transactionID uint16, domainName string) []byte {
 	question := createDomainNameSection(domainName)     // The domain name section
 	question = append(question, 0x00, 0x01, 0x00, 0x01) // Type A, Class IN
 
-	// Answer Section
-	// The answer will be a simple static response. For example, returning an IP address "127.0.0.1"
-	answer := createDomainNameSection(domainName)   // Domain Name
-	answer = append(answer, 0x00, 0x01)             // Type A
-	answer = append(answer, 0x00, 0x01)             // Class IN
+	// Answer Section for CNAME
+	answer := createDomainNameSection(domainName)   // Return domainName (.local) in the answer section
+	answer = append(answer, 0x00, 0x05)             // Type CNAME (0x05)
+	answer = append(answer, 0x00, 0x01)             // Class IN (0x01)
 	answer = append(answer, 0x00, 0x00, 0x00, 0x1e) // TTL (30 seconds)
-	answer = append(answer, 0x00, 0x04)             // Data length (4 bytes for IPv4 address)
-	answer = append(answer, 0x7f, 0x00, 0x00, 0x01) // IP address 127.0.0.1
+
+	cnameSection := createDomainNameSection(cname)                 // CNAME field (points to .svc)
+	dataLength := len(cnameSection)                                // Calculate correct data length
+	answer = append(answer, byte(dataLength>>8), byte(dataLength)) // 2-byte length field for CNAME
+	answer = append(answer, cnameSection...)                       // Append the CNAME data
 
 	// Combine all parts into the response
 	response := append(header, question...)
@@ -120,6 +224,39 @@ func createDNSResponse(transactionID uint16, domainName string) []byte {
 
 	return response
 }
+
+// // createDNSResponse creates a DNS response for the given domain and IP address
+// func createDNSResponse(transactionID uint16, domainName string, cname string) []byte {
+// 	// DNS Header (12 bytes)
+// 	header := make([]byte, 12)
+// 	binary.BigEndian.PutUint16(header[0:2], transactionID) // Transaction ID
+// 	binary.BigEndian.PutUint16(header[2:4], 0x8180)        // Flags: Standard query response, no error
+// 	binary.BigEndian.PutUint16(header[4:6], 1)             // Number of questions
+// 	binary.BigEndian.PutUint16(header[6:8], 1)             // Number of answers
+// 	binary.BigEndian.PutUint16(header[8:10], 0)            // Number of authority RRs
+// 	binary.BigEndian.PutUint16(header[10:12], 0)           // Number of additional RRs
+
+// 	// Question Section
+// 	question := createDomainNameSection(domainName)     // The domain name section
+// 	question = append(question, 0x00, 0x01, 0x00, 0x01) // Type A, Class IN
+
+// 	// Answer Section
+// 	answer := createDomainNameSection(domainName)   // Domain Name
+// 	answer = append(answer, 0x00, 0x05)             // Type CNAME (0x05)
+// 	answer = append(answer, 0x00, 0x01)             // Class IN (0x01)
+// 	answer = append(answer, 0x00, 0x00, 0x00, 0x1e) // TTL (30 seconds)
+// 	// answer = append(answer, 0x00, 0x04)             // Data length (4 bytes for IPv4 address)
+// 	// answer = append(answer, ip.To4()...)            // IP address (resolved or 127.0.0.1)
+// 	cnameSection := createDomainNameSection(cname)   // CNAME field
+// 	answer = append(answer, byte(len(cnameSection))) // Data length
+// 	answer = append(answer, cnameSection...)
+
+// 	// Combine all parts into the response
+// 	response := append(header, question...)
+// 	response = append(response, answer...)
+// 	fmt.Println(response)
+// 	return response
+// }
 
 // createDomainNameSection creates the domain name section for the DNS message
 func createDomainNameSection(domainName string) []byte {
