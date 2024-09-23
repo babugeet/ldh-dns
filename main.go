@@ -109,7 +109,7 @@ func parseDNSQuery(data []byte, conn *net.UDPConn, clientAddr *net.UDPAddr) erro
 // forwardToExternalDNS forwards a DNS query to another DNS server (e.g., Google DNS)
 func forwardToExternalDNS(query []byte, conn *net.UDPConn, clientAddr *net.UDPAddr) {
 	dnsServerAddr := net.UDPAddr{
-		IP:   net.ParseIP("10.96.0.10"), // Forward to Google DNS (or other DNS server)
+		IP:   net.ParseIP("10.96.0.10"), // Forward to Google DNS (or other DNS server; for time being it is kube api server)
 		Port: 53,
 	}
 
