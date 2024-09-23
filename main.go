@@ -90,7 +90,7 @@ func parseDNSQuery(data []byte, conn *net.UDPConn, clientAddr *net.UDPAddr) erro
 		// }
 		// return nil
 		// If the domain is within linuxdatahub.local, resolve it locally
-		if strings.HasSuffix(domainName, "linuxdatahub.local") || domainName == "linuxdatahub.local" {
+		if strings.HasSuffix(domainName, "sample.dev.ldhappdomain.cloud") || domainName == "sample.dev.ldhappdomain.cloud:" {
 			cname := resolveToLinuxDataHub(domainName)
 
 			response := createDNSResponse(transactionID, domainName, cname)
@@ -109,7 +109,7 @@ func parseDNSQuery(data []byte, conn *net.UDPConn, clientAddr *net.UDPAddr) erro
 // forwardToExternalDNS forwards a DNS query to another DNS server (e.g., Google DNS)
 func forwardToExternalDNS(query []byte, conn *net.UDPConn, clientAddr *net.UDPAddr) {
 	dnsServerAddr := net.UDPAddr{
-		IP:   net.ParseIP("8.8.8.8"), // Forward to Google DNS (or other DNS server)
+		IP:   net.ParseIP("10.96.0.10"), // Forward to Google DNS (or other DNS server)
 		Port: 53,
 	}
 
