@@ -154,7 +154,7 @@ func forwardToExternalDNS(query []byte, conn *net.UDPConn, clientAddr *net.UDPAd
 // 	// Join the last two parts for the first result
 // 	first := strings.Join(parts[len(parts)-2:], ".")
 
-// 	// Join all parts except the last two for the second result
+// 	// Join all parts except the la st two for the second result
 // 	second := strings.Join(parts[:len(parts)-2], ",")
 
 // 	return second + "." + first + ".svc.cluster.local"
