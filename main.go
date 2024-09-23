@@ -145,6 +145,41 @@ func forwardToExternalDNS(query []byte, conn *net.UDPConn, clientAddr *net.UDPAd
 	}
 }
 
+// func splitDomain(domain string) string {
+// 	parts := strings.Split(domain, ".")
+// 	if len(parts) < 2 {
+// 		return domain + ".linuxdatahub.svc.cluster.local"
+// 	}
+
+// 	// Join the last two parts for the first result
+// 	first := strings.Join(parts[len(parts)-2:], ".")
+
+// 	// Join all parts except the last two for the second result
+// 	second := strings.Join(parts[:len(parts)-2], ",")
+
+// 	return second + "." + first + ".svc.cluster.local"
+// }
+
+func splitDomain(input string) string {
+	// input := "test.ns.linuxdatahub.local"
+	// input := "test.linuxdatahub.local"
+	//test.linuxdatahub.svc.cluster.local.
+	fmt.Println(input)
+	parts := strings.Split(input, ".")
+	if len(input) > 4 {
+		part := parts[:2]
+		fmt.Println(strings.Join(part, ".") + ".svc.cluster.local")
+		return strings.Join(part, ".") + ".svc.cluster.local"
+	} else if len(input) == 3 {
+		part := parts[:1]
+		fmt.Println(strings.Join(part, ".") + "linuxdatahub.svc.cluster.local")
+		return strings.Join(part, ".") + "linuxdatahub.svc.cluster.local"
+	} else {
+		// fmt.Println(parts)
+		return input
+	}
+}
+
 // // resolveToLinuxDataHub resolves linuxdatahub.local to linuxdatahub.com
 // func resolveToLinuxDataHub(domain string) string {
 // 	fmt.Printf("Resolving %s to linuxdatahub.com\n", domain)
@@ -155,9 +190,11 @@ func forwardToExternalDNS(query []byte, conn *net.UDPConn, clientAddr *net.UDPAd
 
 // Instead of resolving to an IP, resolve the query to the CNAME linuxdatahub.svc
 func resolveToLinuxDataHub(domain string) string {
+	localsvc := splitDomain(domain)
 	fmt.Printf("Resolving %s to CNAME linuxdatahub.svc\n", domain)
+	fmt.Println(localsvc)
 	// Return the CNAME for linuxdatahub.svc
-	return "linuxdatahub.svc"
+	return localsvc
 }
 
 // func createDNSResponse(transactionID uint16, domainName string, cname string) []byte {
