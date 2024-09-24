@@ -1,12 +1,12 @@
 # ldh-dns
 
 create make file --> done
-create docker file
+create docker file --> done
 cut release --> done
 check for coredns file update --> done
 code reorg --> done
 create env for domain --> done
-add lint
+add lint --> done
 
   Corefile: |
     sample.dev.ldhappdomain.cloud:53 {
