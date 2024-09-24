@@ -1,11 +1,11 @@
 # ldh-dns
 
-create make file
+create make file --> done
 create docker file
 cut release --> done
 check for coredns file update --> done
 code reorg --> done
-create env for domain 
+create env for domain --> done
 add lint
 
   Corefile: |

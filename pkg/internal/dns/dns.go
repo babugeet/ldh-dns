@@ -45,7 +45,7 @@ func ForwardToExternalDNS(query []byte, conn *net.UDPConn, clientAddr *net.UDPAd
 
 	// Wait for the response from the external DNS server
 	response := make([]byte, 512)
-	externalConn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	externalConn.SetReadDeadline(time.Now().Add(2 * time.Second)) //nolint:all
 	n, _, err := externalConn.ReadFromUDP(response)
 	if err != nil {
 		fmt.Printf("Error reading response from external DNS server: %v\n", err)
