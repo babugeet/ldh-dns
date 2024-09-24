@@ -2,8 +2,10 @@
 
 create make file
 create docker file
-cut release
+cut release --> done
 check for coredns file update --> done
+code reorg --> done
+create env for domain 
 
   Corefile: |
     sample.dev.ldhappdomain.cloud:53 {
