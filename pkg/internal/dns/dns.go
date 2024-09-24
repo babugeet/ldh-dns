@@ -5,14 +5,26 @@ import (
 	"fmt"
 	"ldh-dns/pkg/internal/utils"
 	"net"
+	"os"
 	"strings"
 	"time"
 )
 
+var (
+	externalDNSServer = os.Getenv("_DNS_SERVER")
+	customDomain      = os.Getenv("_PRIVATE_DOMAIN")
+)
+
 // forwardToExternalDNS forwards a DNS query to another DNS server (e.g., Google DNS)
 func ForwardToExternalDNS(query []byte, conn *net.UDPConn, clientAddr *net.UDPAddr) {
+	if externalDNSServer == "" {
+		fmt.Println("_DNS_SERVER env is not set")
+		panic("_DNS_SERVER env is not set")
+	}
+
 	dnsServerAddr := net.UDPAddr{
-		IP:   net.ParseIP("10.96.0.10"), // Forward to Google DNS (or other DNS server; for time being it is kube api server)
+		// IP:   net.ParseIP("10.96.0.10"), // Forward to Google DNS (or other DNS server; for time being it is kube api server)
+		IP:   net.ParseIP(externalDNSServer),
 		Port: 53,
 	}
 
@@ -129,7 +141,11 @@ func ParseDNSQuery(data []byte, conn *net.UDPConn, clientAddr *net.UDPAddr) erro
 		// }
 		// return nil
 		// If the domain is within linuxdatahub.local, resolve it locally
-		if strings.HasSuffix(domainName, "sample.dev.ldhappdomain.cloud") || domainName == "sample.dev.ldhappdomain.cloud:" {
+		if customDomain == "" {
+			fmt.Println("custom domain is not set")
+			panic("_PRIVATE_DOMAIN is not set")
+		}
+		if strings.HasSuffix(domainName, customDomain) || domainName == customDomain {
 			cname := utils.ResolveToLinuxDataHub(domainName)
 
 			response := CreateDNSResponse(transactionID, domainName, cname)
