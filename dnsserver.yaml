@@ -1,0 +1,65 @@
+# Pod file may be faulty..Havent manually.. take this only as reference.
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: dnsserver
+  name: dnsserver
+spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - port: 53
+    protocol: UDP
+    targetPort: 8053
+  selector:
+    run: dnsserver
+  sessionAffinity: None
+  type: ClusterIP
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: dnsserver
+  name: dnsserver
+  namespace: default
+spec:
+  containers:
+  - image: <update image>
+    imagePullPolicy: Always
+    name: dnsserver
+    ports:
+    - containerPort: 8053
+      protocol: TCP
+    resources: {}
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-fp8v7
+      readOnly: true
+  volumes:
+  - name: kube-api-access-fp8v7
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3607
+          path: token
+      - configMap:
+          items:
+          - key: ca.crt
+            path: ca.crt
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace
